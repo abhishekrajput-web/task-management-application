@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../features/auth/authSlice.js';
-import { LogOut, LayoutGrid, Search } from 'lucide-react';
+import { LogOut, LayoutGrid} from 'lucide-react';
 
 const Navbar = () => {
   const dispatch = useDispatch();
