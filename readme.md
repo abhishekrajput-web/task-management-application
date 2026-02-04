@@ -1,235 +1,233 @@
-# Smart Task Manager (AI-Powered)
+# Smart Task Manager (AI‑Powered) — Gemini 2.5 Flash
 
-A full‑stack task management app with AI features built-in:
-- Create, update, delete, and filter tasks
+A full‑stack task management app with built‑in AI features using **Google Gemini 2.5 Flash**.
+
+## What you can do
+- Create, update, delete tasks
+- Filter by status/priority + sort by newest or due date
 - Search tasks by title/description
-- AI Productivity Assistant: suggests what to work on next
-- AI Improve Task: improves title + recommends priority + estimates time
-- AI Task Breakdown: splits a large task into subtasks
+- AI Productivity Assistant: recommends what to work on next
+- AI Improve Task: improves the title + suggests priority + estimates time
+- AI Task Breakdown: generates subtasks with time estimates
 
-## Demo
-- **Video walkthrough:** https://your-video-link-here (YouTube/Drive)
-- **Live demo (optional):** https://your-live-link-here
+---
+
+## Demo (GitHub Video)
+https://github.com/user-attachments/assets/fac08f99-a8fb-49ef-8197-6ad6a730c4a6
+```md
+
+```
 
 ---
 
 ## Screenshots
 
-> Put screenshots in `client/public/screenshots/` (recommended), then link them here.
+### Web App
 
-### 1) Dashboard (Tasks + Filters + AI Advisor)
-![Dashboard](client/public/screenshots/dashboard.png)
+- Register
+![register](https://github.com/user-attachments/assets/5b51a80f-85d4-490f-ad80-ca816be4ae02)
 
-### 2) AI Productivity Suggestion
-![AI Suggestion](client/public/screenshots/ai-suggestion.png)
+- Login  
+![login](https://github.com/user-attachments/assets/89c97f27-bce8-4f95-aa2a-bec883a242e7)
 
-### 3) AI Improve Task
-![AI Improve](client/public/screenshots/ai-improve.png)
+- Dashboard
+![dashboard](https://github.com/user-attachments/assets/467531d2-5c18-4ff1-a546-47c4db0c2f25)
 
-### 4) AI Task Breakdown
-![AI Breakdown](client/public/screenshots/ai-breakdown.png)
+- Ai Task Improvement 
+![ai](https://github.com/user-attachments/assets/874c751b-5689-42d2-99c2-22cb3832ec55)
 
-### 5) Search + Filters
-![Search Filters](client/public/screenshots/search-filters.png)
+### Mobile (Responsive)
 
----
+- Mobile Register
+<img src ="https://github.com/user-attachments/assets/7ffe8377-d890-47b1-9f82-207a2961483f">
 
-## Features
-
-### Task Management
-- Add task: title, description, priority, due date
-- Update task + mark completed/pending
-- Delete task
-- Filters: status + priority + sort
-- Search: `title` and `description`
-
-### AI (RapidAPI Grok-3)
-- **AI Productivity Assistant:** recommends the next best task to do
-- **AI Improve Task:** suggests improved title, priority, and time estimate
-- **AI Breakdown:** generates actionable subtasks with estimates
+- Mobile Login
+<img src ="https://github.com/user-attachments/assets/eb0c42de-7125-4f04-ad5b-8dbfeaaa0e35">
 
 ---
 
 ## Tech Stack
-### Frontend
-- React + Redux Toolkit
-- Tailwind CSS
-- Lucide icons
 
-### Backend
+### Frontend (client)
+- React (Vite)
+- Redux Toolkit
+- Tailwind CSS
+- Axios
+- React Router Dom
+- Lucide icons
+- react-hot-toast notifications
+
+### Backend (server)
 - Node.js + Express
 - MongoDB + Mongoose
-- JWT Auth
-- RapidAPI (Grok-3 endpoint)
+- JWT authentication
+- Google Gemini AI via `@google/genai` (**gemini-2.5-flash**)
 
 ---
 
-## Folder Structure
+## Project Structure 
 
 ```text
 task management app - ai inbuilt/
+├─ readme.md
 ├─ client/
+│  ├─ .env
+│  ├─ package.json
+│  ├─ vite.config.js
+│  ├─ index.html
 │  ├─ public/
-│  │  └─ screenshots/                # add screenshots here
+│  │  └─ screenshots/
+│  │     ├─ web/
+│  │     └─ mobile/
 │  └─ src/
+│     ├─ app/
+│     │  └─ store.js
 │     ├─ components/
 │     │  ├─ AIAdvisor.jsx
 │     │  ├─ Navbar.jsx
+│     │  ├─ ProtectedRoute.jsx
 │     │  ├─ TaskCard.jsx
 │     │  ├─ TaskFilters.jsx
 │     │  └─ TaskForm.jsx
 │     ├─ features/
 │     │  ├─ ai/
 │     │  │  └─ aiSlice.js
+│     │  ├─ auth/
+│     │  │  └─ authSlice.js
 │     │  └─ tasks/
 │     │     └─ taskSlice.js
 │     ├─ pages/
-│     │  └─ Dashboard.jsx
-│     └─ services/
-│        └─ api.js
+│     │  ├─ Dashboard.jsx
+│     │  ├─ Login.jsx
+│     │  └─ Register.jsx
+│     ├─ services/
+│     │  ├─ api.js
+│     │  └─ authSlice.js
+│     ├─ index.css
+│     ├─ main.jsx
+│     └─ App.jsx
 │
 └─ server/
+   ├─ .env                # DO NOT COMMIT
+   ├─ .gitignore
+   ├─ app.js
+   ├─ package.json
+   ├─ config/
+   │  └─ db.js
    ├─ controllers/
    │  ├─ aiController.js
+   │  ├─ authController.js
    │  └─ taskController.js
+   ├─ helpers/
+   │  ├─ jwtHelper.js
+   │  └─ passwordHelper.js
    ├─ middleware/
    │  └─ authMiddleware.js
    ├─ models/
-   │  └─ Task.js
+   │  ├─ Task.js
+   │  └─ User.js
    ├─ routes/
    │  ├─ aiRoutes.js
+   │  ├─ authRoutes.js
    │  └─ taskRoutes.js
    ├─ services/
-   │  └─ geminiServices.js           # Grok RapidAPI integration
-   ├─ .env.example                   # committed
-   └─ server.js / app.js             # entry (your project file)
+   │  └─ geminiServices.js
+   └─ utils/
+      ├─ errorHandlers.js
+      ├─ healthCheck.js
+      └─ logger.js
 ```
 
 ---
 
-## Setup (Local Development)
+## AI Features (Gemini 2.5 Flash)
 
-### Prerequisites
-- Node.js 18+ (recommended)
-- MongoDB running locally **OR** a MongoDB Atlas connection string
-- RapidAPI key for Grok-3 endpoint
+The backend uses **Gemini 2.5 Flash** (`gemini-2.5-flash`) to:
+- Generate productivity suggestions from your task list
+- Improve a task (title/priority/time estimate)
+- Break down a task into subtasks
 
----
-
-## Environment Variables
-
-### 1) Server env
-Create: `server/.env` (DO NOT commit)
-
-Example: copy `server/.env.example` → `server/.env`
-
-```env
-NODE_ENV=development
-PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/smart-task-manager
-
-JWT_SECRET=change_me
-JWT_EXPIRE=30d
-
-CLIENT_URL=http://localhost:3000
-
-# RapidAPI Grok-3
-RAPIDAPI_KEY=your_rapidapi_key
-RAPIDAPI_HOST=grok-3-0-ai.p.rapidapi.com
-RAPIDAPI_GROK_URL=https://grok-3-0-ai.p.rapidapi.com/
-```
-
-> Security:
-> - Never commit API keys, JWT secrets, or DB credentials.
-> - Add `server/.env` to `.gitignore`.
-
-### 2) Client env (if your client uses env)
-If needed, create: `client/.env`
-```env
-VITE_API_URL=http://localhost:5000
-```
+Backend service file:
+- `server/services/geminiServices.js`
 
 ---
 
-## Install & Run
+## API Routes
 
-### Backend
-```bash
-cd server
-npm install
-npm run dev
-```
+Base URL (client env):
+- `VITE_API_URL=http://localhost:5000/api`
 
-Backend will run on:
-- `http://localhost:5000`
+### Auth
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me` (protected)
 
-### Frontend
-```bash
-cd client
-npm install
-npm run dev
-```
-
-Frontend will run on:
-- `http://localhost:3000` (or Vite default `5173` depending on your setup)
-
----
-
-## API Endpoints (Summary)
-
-### Tasks
+### Tasks (protected)
 - `GET /api/tasks?status=&priority=&sortBy=&search=`
 - `POST /api/tasks`
 - `GET /api/tasks/:id`
 - `PUT /api/tasks/:id`
 - `DELETE /api/tasks/:id`
-- `PATCH /api/tasks/:id/toggle` *(if enabled in your backend)*
+- `PATCH /api/tasks/:id/toggle`
 
-### AI
-- `POST /api/ai/suggestion` → Productivity assistant
-- `POST /api/ai/improve` `{ taskId }` → Improve task
-- `POST /api/ai/breakdown` `{ taskId }` → Break down into subtasks
-
-All routes are protected using JWT (Authorization header).
+### AI (protected)
+- `POST /api/ai/suggestion`
+- `POST /api/ai/improve` `{ "taskId": "..." }`
+- `POST /api/ai/breakdown` `{ "taskId": "..." }`
 
 ---
 
-## How to Add Screenshots
-1. Create folder: `client/public/screenshots/`
-2. Add images:
-   - `dashboard.png`
-   - `ai-suggestion.png`
-   - `ai-improve.png`
-   - `ai-breakdown.png`
-   - `search-filters.png`
-3. Update links in README.
+## Environment Variables
+
+### Server (`server/.env`) — do not commit
+Create `server/.env` locally.
+
+```env
+NODE_ENV=development
+PORT=5000
+
+MONGO_URI=YOUR_MONGODB_URI
+
+JWT_SECRET=change_this_secret
+JWT_EXPIRE=30d
+
+# Gemini
+GOOGLE_GEMINI_API=your_gemini_api_key
+```
+
+### Client (`client/.env`)
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
 ---
 
-## How to Record Video Demo (Quick)
-- Windows: Xbox Game Bar (`Win + G`) OR OBS Studio
-- Record:
-  - Login/Register
-  - Create tasks
-  - Search + filters
-  - “Get Suggestion”
-  - “Improve” + “Breakdown”
-- Upload to YouTube/Drive and paste link in README.
+## Run Locally (Windows)
 
----
+### 1) Start MongoDB
+Make sure MongoDB is running locally.
 
-## Deployment Notes (Optional)
-- Use MongoDB Atlas for production DB
-- Store env variables in the hosting dashboard
-- Set `CLIENT_URL` to your deployed frontend domain
-- Enable CORS accordingly
+### 2) Start Server
+```powershell
+cd "server"
+npm install
+node app.js
+```
 
----
+Server runs on:
+- `http://localhost:5000`
 
-## Contributing
-Pull requests are welcome. For major changes, open an issue first to discuss.
+### 3) Start Client
+Open a new terminal:
+```powershell
+cd "client"
+npm install
+npm run dev
+```
 
----
+Client runs on:
+- `http://localhost:5173` (or Vite port shown in terminal)
 
 ## License
 MIT
