@@ -7,11 +7,11 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-
+import NotFound from './pages/NotFound.jsx';
 function AppLayout() {
   const location = useLocation();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-
+  const is404Page = !['/login', '/register', '/dashboard', '/'].includes(location.pathname);
   return (
     <div className="min-h-screen bg-white">
       {!isAuthPage && <Navbar />}
@@ -28,6 +28,7 @@ function AppLayout() {
             }
           />
           <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </div>
