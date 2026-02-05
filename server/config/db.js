@@ -16,6 +16,7 @@ const connectDB = async () => {
     if (error.message.includes('ECONNREFUSED')) {
       console.error('\n💡 MongoDB is not running. Start it with:');
       console.error('   net start MongoDB\n');
+      console.error(error);
     }
     
     throw error;
