@@ -2,6 +2,10 @@
 
 A full‑stack task management app with built‑in AI features using **Google Gemini 2.5 Flash**.
 
+## 🚀 Live Links
+- **Link - (Web App):** [https://smart-task-management-gemini-flash.netlify.app](https://smart-task-management-gemini-flash.netlify.app)
+
+---
 ## What you can do
 - Create, update, delete tasks
 - Filter by status/priority + sort by newest or due date
