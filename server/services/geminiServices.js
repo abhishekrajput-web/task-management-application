@@ -29,14 +29,12 @@ const buildPromptFromTasks = (tasks) => {
 const tryParseJsonObject = (text) => {
   if (!text || typeof text !== 'string') return null;
 
-  // 1) direct parse
   try {
     return JSON.parse(text);
   } catch {
     // continue
   }
 
-  // 2) extract first {...} block
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start >= 0 && end > start) {
@@ -72,7 +70,7 @@ const callGemini = async (prompt) => {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 600,
+        maxOutputTokens: 1000,
       },
     });
 
@@ -93,7 +91,7 @@ export const getProductivitySuggestion = async (tasks) => {
     return {
       success: true,
       suggestion: text,
-      source: 'gemini-2.5-flash',
+      source: 'gemini-2.0-flash',
       taskCount: tasks.length,
     };
   } catch (error) {
@@ -138,14 +136,14 @@ export const improveTaskWithAI = async (task) => {
     const parsed = tryParseJsonObject(text);
 
     if (parsed && parsed.improvedTitle) {
-      return { success: true, data: parsed, source: 'gemini-2.5-flash' };
+      return { success: true, data: parsed, source: 'gemini-2.0-flash' };
     }
 
     return {
       success: true,
       data: null,
       suggestion: text,
-      source: 'gemini-2.5-flash',
+      source: 'gemini-2.0-flash',
     };
   } catch (error) {
     console.error('Improve Task AI Error:', error);
@@ -187,14 +185,14 @@ export const breakdownTaskWithAI = async (task) => {
     const parsed = tryParseJsonObject(text);
 
     if (parsed && Array.isArray(parsed.subtasks)) {
-      return { success: true, data: parsed, source: 'gemini-2.5-flash' };
+      return { success: true, data: parsed, source: 'gemini-2.0-flash' };
     }
 
     return {
       success: true,
       data: null,
       suggestion: text,
-      source: 'gemini-2.5-flash',
+      source: 'gemini-2.0-flash',
     };
   } catch (error) {
     console.error('Breakdown Task AI Error:', error);
@@ -207,6 +205,318 @@ export const breakdownTaskWithAI = async (task) => {
   }
 };
 
+// NEW: Brain Dump Parser
+export const parseBrainDumpWithAI = async (text) => {
+  try {
+    const prompt = [
+      'You are a task extraction AI. Parse this messy brain dump into structured tasks.',
+      '',
+      'Brain dump:',
+      `"${text}"`,
+      '',
+      'Return STRICT JSON only (no markdown, no extra text):',
+      '{',
+      '  "tasks": [',
+      '    {',
+      '      "title": "string",',
+      '      "description": "string or empty",',
+      '      "priority": "Low" | "Medium" | "High",',
+      '      "suggestedDueDate": "YYYY-MM-DD or null",',
+      '      "estimateMinutes": number',
+      '    }',
+      '  ]',
+      '}',
+      '',
+      'Rules:',
+      '- Extract ALL actionable items',
+      '- Infer priority from urgency words (ASAP, urgent, important = High)',
+      '- Infer due dates from phrases like "tomorrow", "next week", "by Friday"',
+      `- Today's date is ${new Date().toISOString().split('T')[0]}`,
+    ].join('\n');
+
+    const result = await callGemini(prompt);
+    if (!result) {
+      return {
+        success: true,
+        data: null,
+        suggestion: 'AI not available right now. Please try again.',
+        source: 'mock-ai',
+      };
+    }
+
+    const parsed = tryParseJsonObject(result);
+
+    if (parsed?.tasks) {
+      return { success: true, data: parsed, source: 'gemini-2.0-flash' };
+    }
+
+    return { success: true, data: null, suggestion: result, source: 'gemini-2.0-flash' };
+  } catch (error) {
+    console.error('Brain Dump Parse Error:', error);
+    return {
+      success: false,
+      message: 'Failed to parse brain dump',
+      source: 'error',
+    };
+  }
+};
+
+// NEW: Energy-Based Suggestions
+export const getEnergyBasedSuggestions = async (tasks, energyLevel) => {
+  try {
+    const taskData = tasks.map((task) => ({
+      id: task._id,
+      title: task.title,
+      priority: task.priority,
+      dueDate: new Date(task.dueDate).toISOString(),
+      description: task.description || '',
+    }));
+
+    const prompt = [
+      'You are a productivity coach that matches tasks to energy levels.',
+      '',
+      `User's current energy level: ${energyLevel.toUpperCase()}`,
+      '',
+      'Energy level meanings:',
+      '- LOW: User is tired, suggest easy quick wins, simple tasks, organizing, reading',
+      '- MEDIUM: User has moderate energy, suggest standard tasks, meetings prep, emails',
+      '- HIGH: User is energized, suggest complex tasks, creative work, problem-solving',
+      '',
+      'Available tasks:',
+      JSON.stringify(taskData, null, 2),
+      '',
+      'Return STRICT JSON only (no markdown):',
+      '{',
+      '  "recommendedTasks": [',
+      '    {',
+      '      "taskId": "string",',
+      '      "title": "string",',
+      '      "reason": "string (why this matches their energy)",',
+      '      "estimatedFocus": "number (minutes)"',
+      '    }',
+      '  ],',
+      '  "energyTip": "string (advice for their current energy state)",',
+      '  "avoidTasks": ["task titles to avoid at this energy level"]',
+      '}',
+    ].join('\n');
+
+    const result = await callGemini(prompt);
+    if (!result) {
+      return getDefaultEnergySuggestions(tasks, energyLevel);
+    }
+
+    const parsed = tryParseJsonObject(result);
+
+    if (parsed?.recommendedTasks) {
+      return { success: true, data: parsed, energyLevel, source: 'gemini-2.0-flash' };
+    }
+
+    return { success: true, data: null, suggestion: result, source: 'gemini-2.0-flash' };
+  } catch (error) {
+    console.error('Energy Suggestions Error:', error);
+    return getDefaultEnergySuggestions(tasks, energyLevel);
+  }
+};
+
+const getDefaultEnergySuggestions = (tasks, energyLevel) => {
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+    return priorityOrder[b.priority] - priorityOrder[a.priority];
+  });
+
+  let recommendedTasks = [];
+  let energyTip = '';
+  let avoidTasks = [];
+
+  if (energyLevel === 'low') {
+    recommendedTasks = sortedTasks.filter(t => t.priority === 'Low').slice(0, 3);
+    energyTip = 'Focus on quick wins and simple tasks. Take breaks every 25 minutes.';
+    avoidTasks = sortedTasks.filter(t => t.priority === 'High').map(t => t.title).slice(0, 2);
+  } else if (energyLevel === 'medium') {
+    recommendedTasks = sortedTasks.filter(t => t.priority === 'Medium').slice(0, 3);
+    energyTip = 'Good time for standard work. Consider tackling one challenging task.';
+    avoidTasks = [];
+  } else {
+    recommendedTasks = sortedTasks.filter(t => t.priority === 'High').slice(0, 3);
+    energyTip = 'Your energy is high! Tackle your most complex and important tasks now.';
+    avoidTasks = sortedTasks.filter(t => t.priority === 'Low').map(t => t.title).slice(0, 2);
+  }
+
+  return {
+    success: true,
+    data: {
+      recommendedTasks: recommendedTasks.map(t => ({
+        taskId: t._id,
+        title: t.title,
+        reason: `Matches your ${energyLevel} energy level`,
+        estimatedFocus: 30,
+      })),
+      energyTip,
+      avoidTasks,
+    },
+    energyLevel,
+    source: 'mock-ai',
+  };
+};
+
+// NEW: Do It For Me
+export const doTaskForMe = async (task) => {
+  try {
+    const prompt = [
+      'You are an AI assistant that helps complete tasks.',
+      'Based on the task below, generate the actual content/output that would complete this task.',
+      '',
+      'Task:',
+      `Title: ${task.title}`,
+      `Description: ${task.description || '(none)'}`,
+      '',
+      'Instructions:',
+      '- If it\'s "Write email to..." → generate the email',
+      '- If it\'s "Create agenda for..." → generate the agenda',
+      '- If it\'s "Research..." → provide a summary of key findings',
+      '- If it\'s "Draft..." → write the draft',
+      '- If it\'s "Plan..." → create a step-by-step plan',
+      '- For other tasks → provide helpful content to complete it',
+      '',
+      'Return STRICT JSON only (no markdown):',
+      '{',
+      '  "taskType": "email" | "agenda" | "research" | "draft" | "plan" | "other",',
+      '  "generatedContent": "string (the actual output/content)",',
+      '  "summary": "string (brief description of what was generated)",',
+      '  "nextSteps": ["string (what user should do next)"]',
+      '}',
+    ].join('\n');
+
+    const result = await callGemini(prompt);
+    if (!result) {
+      return {
+        success: true,
+        data: null,
+        suggestion: 'AI not available right now. Please try again.',
+        source: 'mock-ai',
+      };
+    }
+
+    const parsed = tryParseJsonObject(result);
+
+    if (parsed?.generatedContent) {
+      return { success: true, data: parsed, taskTitle: task.title, source: 'gemini-2.0-flash' };
+    }
+
+    return { success: true, data: null, suggestion: result, source: 'gemini-2.0-flash' };
+  } catch (error) {
+    console.error('Do It For Me Error:', error);
+    return {
+      success: true,
+      data: null,
+      suggestion: 'AI not available right now. Please try again.',
+      source: 'mock-ai',
+    };
+  }
+};
+
+// NEW: Daily Reflection
+export const getDailyReflection = async (tasks, reflectionData) => {
+  try {
+    const completedToday = tasks.filter(t => 
+      t.status === 'Completed' && 
+      new Date(t.updatedAt).toDateString() === new Date().toDateString()
+    );
+    
+    const pendingTasks = tasks.filter(t => t.status === 'Pending');
+    const overdueTasks = pendingTasks.filter(t => new Date(t.dueDate) < new Date());
+
+    const prompt = [
+      'You are a productivity coach providing end-of-day reflection and insights.',
+      '',
+      'Today\'s Data:',
+      `- Tasks completed today: ${completedToday.length}`,
+      `- Tasks still pending: ${pendingTasks.length}`,
+      `- Overdue tasks: ${overdueTasks.length}`,
+      `- User said they completed: ${reflectionData.completedToday || 'not specified'}`,
+      `- Blockers mentioned: ${reflectionData.blockers || 'none'}`,
+      `- Self-rated productivity (1-5): ${reflectionData.productivityRating || 'not rated'}`,
+      '',
+      'Completed tasks today:',
+      completedToday.map(t => `- ${t.title}`).join('\n') || '(none)',
+      '',
+      'Return STRICT JSON only (no markdown):',
+      '{',
+      '  "dailySummary": "string (2-3 sentence summary of today)",',
+      '  "wins": ["string (positive things accomplished)"],',
+      '  "improvements": ["string (areas to improve)"],',
+      '  "tomorrowFocus": ["string (what to focus on tomorrow)"],',
+      '  "motivationalMessage": "string (encouraging message)",',
+      '  "productivityScore": number (0-100 based on analysis),',
+      '  "patterns": ["string (behavioral patterns noticed)"]',
+      '}',
+    ].join('\n');
+
+    const result = await callGemini(prompt);
+    if (!result) {
+      return getDefaultReflection(tasks, reflectionData);
+    }
+
+    const parsed = tryParseJsonObject(result);
+
+    if (parsed?.dailySummary) {
+      return { 
+        success: true, 
+        data: parsed, 
+        stats: {
+          completedToday: completedToday.length,
+          pending: pendingTasks.length,
+          overdue: overdueTasks.length,
+        },
+        source: 'gemini-2.0-flash' 
+      };
+    }
+
+    return { success: true, data: null, suggestion: result, source: 'gemini-2.0-flash' };
+  } catch (error) {
+    console.error('Daily Reflection Error:', error);
+    return getDefaultReflection(tasks, reflectionData);
+  }
+};
+
+const getDefaultReflection = (tasks, reflectionData) => {
+  const completedToday = tasks.filter(t => 
+    t.status === 'Completed' && 
+    new Date(t.updatedAt).toDateString() === new Date().toDateString()
+  );
+  const pendingTasks = tasks.filter(t => t.status === 'Pending');
+  const overdueTasks = pendingTasks.filter(t => new Date(t.dueDate) < new Date());
+
+  const score = Math.min(100, Math.max(0, 
+    (completedToday.length * 20) - (overdueTasks.length * 10) + 
+    ((reflectionData.productivityRating || 3) * 10)
+  ));
+
+  return {
+    success: true,
+    data: {
+      dailySummary: `You completed ${completedToday.length} tasks today with ${pendingTasks.length} still pending.`,
+      wins: completedToday.length > 0 
+        ? [`Completed ${completedToday.length} task(s)`, 'Showed up and worked on your goals']
+        : ['Showed up and checked your tasks'],
+      improvements: overdueTasks.length > 0 
+        ? [`Address ${overdueTasks.length} overdue task(s)`, 'Consider breaking large tasks into smaller ones']
+        : ['Keep maintaining your current momentum'],
+      tomorrowFocus: pendingTasks.slice(0, 3).map(t => t.title),
+      motivationalMessage: completedToday.length > 0 
+        ? 'Great job today! Every completed task is progress. Keep it up! 🎉'
+        : 'Tomorrow is a new opportunity. Start with one small task and build momentum! 💪',
+      productivityScore: score,
+      patterns: ['Daily reflection helps build self-awareness'],
+    },
+    stats: {
+      completedToday: completedToday.length,
+      pending: pendingTasks.length,
+      overdue: overdueTasks.length,
+    },
+    source: 'mock-ai',
+  };
+};
 
 const getMockSuggestion = (tasks) => {
   if (!tasks || tasks.length === 0) {
@@ -224,7 +534,6 @@ const getMockSuggestion = (tasks) => {
     };
   }
 
-  
   const pendingTasks = tasks.filter((t) => t.status === 'Pending');
   const highPriorityTasks = pendingTasks.filter((t) => t.priority === 'High');
   const mediumPriorityTasks = pendingTasks.filter((t) => t.priority === 'Medium');
@@ -234,10 +543,8 @@ const getMockSuggestion = (tasks) => {
 
   let suggestion = '🎯 **AI Productivity Analysis**\n\n';
 
-
   if (overdueTasks.length > 0) {
     const urgentTask = overdueTasks.sort((a, b) => {
-  
       const priorityOrder = { High: 3, Medium: 2, Low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     })[0];
@@ -263,7 +570,6 @@ const getMockSuggestion = (tasks) => {
     suggestion += `• Due: ${new Date(nextTask.dueDate).toLocaleDateString()}\n\n`;
   }
 
-
   suggestion += `💡 **Productivity Tips:**\n`;
 
   if (pendingTasks.length > 0) {
@@ -281,7 +587,6 @@ const getMockSuggestion = (tasks) => {
   suggestion += `• Use time-blocking: dedicate 25-minute focused sessions (Pomodoro technique)\n`;
   suggestion += `• Complete one task fully before starting another to maintain momentum\n\n`;
 
-
   const completionRate = tasks.length > 0 ? ((completedTasks.length / tasks.length) * 100).toFixed(0) : 0;
 
   suggestion += `📊 **Your Progress:**\n`;
@@ -294,7 +599,6 @@ const getMockSuggestion = (tasks) => {
   }
 
   suggestion += `\n`;
-
 
   if (completionRate >= 70) {
     suggestion += `🎉 **Great job!** You're completing most of your tasks. Keep up the momentum!\n`;

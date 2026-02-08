@@ -1,14 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import TaskForm from '../components/TaskForm.jsx';
 import TaskCard from '../components/TaskCard.jsx';
 import TaskFilters from '../components/TaskFilters.jsx';
 import AIAdvisor from '../components/AIAdvisor.jsx';
+import BrainDump from '../components/BrainDump.jsx';
+import EnergySuggestions from '../components/EnergySuggestions.jsx';
+import DailyReflection from '../components/DailyReflection.jsx';
+import TaskPagination from '../components/TaskPagination.jsx';
 import { CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+
+const TASKS_PER_PAGE = 5;
 
 const Dashboard = () => {
   const { tasks, isLoading, filters } = useSelector((state) => state.tasks);
   const { user } = useSelector((state) => state.auth);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -21,6 +28,24 @@ const Dashboard = () => {
 
     return { total, completed, pending, overdue, completionRate };
   }, [tasks]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(tasks.length / TASKS_PER_PAGE);
+  
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (currentPage - 1) * TASKS_PER_PAGE;
+    const endIndex = startIndex + TASKS_PER_PAGE;
+    return tasks.slice(startIndex, endIndex);
+  }, [tasks, currentPage]);
+
+  // Reset to page 1 when filters change or tasks change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, tasks.length]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   return (
     <div className="bg-white">
@@ -38,13 +63,18 @@ const Dashboard = () => {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
+            {/* Brain Dump */}
+            <BrainDump />
+            
             <TaskForm />
             <TaskFilters />
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-tight text-slate-900">Tasks</h2>
-                <p className="text-sm text-slate-500">{tasks.length} total</p>
+                <p className="text-sm text-slate-500">
+                  {tasks.length} total {tasks.length > TASKS_PER_PAGE && `• Page ${currentPage} of ${totalPages}`}
+                </p>
               </div>
 
               {isLoading ? (
@@ -64,11 +94,20 @@ const Dashboard = () => {
                   </p>
                 </div>
               ) : (
-                <div className="max-h-[60vh] space-y-3 overflow-auto pr-2">
-                  {tasks.map((task) => (
-                    <TaskCard key={task._id} task={task} />
-                  ))}
-                </div>
+                <>
+                  <div className="space-y-3">
+                    {paginatedTasks.map((task) => (
+                      <TaskCard key={task._id} task={task} />
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  <TaskPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -120,7 +159,13 @@ const Dashboard = () => {
                 </div>
               </div>
 
+              {/* Energy Suggestions */}
+              <EnergySuggestions />
+
               <AIAdvisor />
+
+              {/* Daily Reflection */}
+              <DailyReflection />
             </div>
           </div>
         </div>
